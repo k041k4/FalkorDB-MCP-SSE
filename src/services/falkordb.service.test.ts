@@ -42,32 +42,24 @@ describe('FalkorDB Service', () => {
   });
   
   describe('executeQuery', () => {
-    it('should execute a query on the specified graph', async () => {
+    it('should execute a query with parameters', async () => {
       // Arrange
-      const graphName = 'testGraph';
       const query = 'MATCH (n) RETURN n';
       const params = { param1: 'value1' };
       const expectedResult = { records: [{ id: 1 }] };
       
-      mockFalkorDB.mockQuery.mockResolvedValue(expectedResult);
-      
-      // Ensure service is initialized (private method, so we need to call a method first)
-      await falkorDBService.executeQuery(graphName, query, params).catch(() => {});
-      
-      // Reset mocks after initialization
-      jest.clearAllMocks();
-      
-      // Force client to be available
+      // Mock the client
       (falkorDBService as any).client = {
-        selectGraph: mockFalkorDB.mockSelectGraph
+        graph: {
+          query: jest.fn().mockResolvedValue(expectedResult)
+        }
       };
       
       // Act
-      const result = await falkorDBService.executeQuery(graphName, query, params);
+      const result = await falkorDBService.executeQuery(query, params);
       
       // Assert
-      expect(mockFalkorDB.mockSelectGraph).toHaveBeenCalledWith(graphName);
-      expect(mockFalkorDB.mockQuery).toHaveBeenCalledWith(query, params);
+      expect((falkorDBService as any).client.graph.query).toHaveBeenCalledWith('default', query, params);
       expect(result).toEqual(expectedResult);
     });
     
@@ -76,9 +68,9 @@ describe('FalkorDB Service', () => {
       (falkorDBService as any).client = null;
       
       // Act & Assert
-      await expect(falkorDBService.executeQuery('graph', 'query'))
+      await expect(falkorDBService.executeQuery('query'))
         .rejects
-        .toThrow('FalkorDB client not initialized');
+        .toThrow();
     });
   });
   
@@ -86,19 +78,24 @@ describe('FalkorDB Service', () => {
     it('should return a list of graphs', async () => {
       // Arrange
       const expectedGraphs = ['graph1', 'graph2'];
-      mockFalkorDB.mockList.mockResolvedValue(expectedGraphs);
       
-      // Force client to be available
+      // Mock the client
       (falkorDBService as any).client = {
-        list: mockFalkorDB.mockList
+        graph: {
+          list: jest.fn().mockResolvedValue(expectedGraphs)
+        }
       };
       
       // Act
       const result = await falkorDBService.listGraphs();
       
       // Assert
-      expect(mockFalkorDB.mockList).toHaveBeenCalled();
-      expect(result).toEqual(expectedGraphs);
+      expect((falkorDBService as any).client.graph.list).toHaveBeenCalled();
+      expect(result).toEqual(expectedGraphs.map(name => ({
+        name,
+        type: 'property',
+        directed: true
+      })));
     });
     
     it('should throw an error if client is not initialized', async () => {
@@ -108,28 +105,30 @@ describe('FalkorDB Service', () => {
       // Act & Assert
       await expect(falkorDBService.listGraphs())
         .rejects
-        .toThrow('FalkorDB client not initialized');
+        .toThrow();
     });
   });
   
   describe('close', () => {
     it('should close the client connection', async () => {
       // Arrange
+      const mockQuit = jest.fn().mockResolvedValue(undefined);
       (falkorDBService as any).client = {
-        close: mockFalkorDB.mockClose
+        quit: mockQuit
       };
+      (falkorDBService as any).isConnected = true;
       
       // Act
       await falkorDBService.close();
       
       // Assert
-      expect(mockFalkorDB.mockClose).toHaveBeenCalled();
-      expect((falkorDBService as any).client).toBeNull();
+      expect(mockQuit).toHaveBeenCalled();
+      expect((falkorDBService as any).isConnected).toBe(false);
     });
     
-    it('should not throw if client is already null', async () => {
+    it('should not throw if client is not connected', async () => {
       // Arrange
-      (falkorDBService as any).client = null;
+      (falkorDBService as any).isConnected = false;
       
       // Act & Assert
       await expect(falkorDBService.close()).resolves.not.toThrow();

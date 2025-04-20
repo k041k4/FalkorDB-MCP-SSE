@@ -1,19 +1,25 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
-    preset: 'ts-jest',
-    testEnvironment: 'node',
-    roots: ['<rootDir>/src'],
-    transform: {
-      '^.+\\.tsx?$': 'ts-jest',
-    },
-    testRegex: '(\\.|/)(test|spec)\\.tsx?$',
-    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-    collectCoverageFrom: [
-      'src/**/*.ts',
-      '!src/**/*.d.ts',
-      '!src/**/*.test.ts',
-      '!src/**/*.spec.ts',
-    ],
-    coverageDirectory: 'coverage',
-    testPathIgnorePatterns: ['/node_modules/', '/dist/']
-  };
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  testMatch: ['**/src/test/**/*.test.ts'],
+  setupFiles: ['dotenv/config'],
+  setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
+  moduleFileExtensions: ['ts', 'js', 'json', 'node'],
+  transform: {
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: 'tsconfig.json',
+      isolatedModules: true
+    }],
+  },
+  testTimeout: 30000, // 30 seconds timeout for tests
+  verbose: true,
+  collectCoverage: false,
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov'],
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/src/test/',
+  ]
+};

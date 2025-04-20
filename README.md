@@ -1,16 +1,16 @@
 # FalkorDB MCP Server
 
-A Model Context Protocol (MCP) server for FalkorDB, allowing AI models to query and interact with graph databases.
+A Model Context Protocol (MCP) server for FalkorDB, allowing AI models to query and interact with graph databases using Redis Graph functionality.
 
 ## Overview
 
-This project implements a server that follows the Model Context Protocol (MCP) specification to connect AI models with FalkorDB graph databases. The server translates and routes MCP requests to FalkorDB and formats the responses according to the MCP standard.
+This project implements a server that follows the Model Context Protocol (MCP) specification to connect AI models with FalkorDB graph databases. The server uses Redis Graph commands to interact with FalkorDB and formats the responses according to the MCP standard.
 
 ## Prerequisites
 
 * Node.js (v16 or later)
 * npm or yarn
-* FalkorDB instance (can be run locally or remotely)
+* FalkorDB instance (Redis with Graph module enabled)
 
 ## Installation
 
@@ -43,7 +43,17 @@ Configuration is managed through environment variables in the `.env` file:
 * `FALKORDB_PORT`: FalkorDB port (default: 6379)
 * `FALKORDB_USERNAME`: Username for FalkorDB authentication (if required)
 * `FALKORDB_PASSWORD`: Password for FalkorDB authentication (if required)
+* `FALKORDB_DEFAULT_GRAPH`: Default graph name (default: 'default')
 * `MCP_API_KEY`: API key for authenticating MCP requests
+* `CORS_ORIGIN`: CORS origin configuration (default: '*')
+
+### Redis Graph Settings
+
+The server includes Redis Graph specific settings:
+* Retry Strategy: Exponential backoff with max 2000ms delay
+* Max Retries Per Request: 3 attempts
+* Ready Check: Enabled
+* Offline Queue: Enabled
 
 ## Usage
 
@@ -67,10 +77,35 @@ npm start
 ## API Endpoints
 
 * `GET /api/mcp/metadata`: Get metadata about the FalkorDB instance and available capabilities
-* `POST /api/mcp/context`: Execute queries against FalkorDB
+* `POST /api/mcp/context`: Execute Cypher queries against FalkorDB using Redis Graph
 * `GET /api/mcp/health`: Check server health
-* `GET /api/mcp/graphs`: Returns the list of Graphs
-* 
+* `GET /api/mcp/graphs`: List available graphs
+* `GET /api/mcp/resources`: Get resource information for a specific graph
+
+## Query Examples
+
+### List All Graphs
+```cypher
+CALL db.labels()
+```
+
+### Count Nodes in a Graph
+```cypher
+MATCH (n) RETURN count(n) as count
+```
+
+### Get Node Properties
+```cypher
+MATCH (n) RETURN DISTINCT keys(n) as properties
+```
+
+## Error Handling
+
+The server includes robust error handling for Redis Graph operations:
+* Connection errors
+* Query execution errors
+* Graph not found errors
+* Authentication errors
 
 ## MCP Configuration
 
@@ -111,7 +146,7 @@ For client-side configuration:
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please read our contributing guidelines for details on our code of conduct and the process for submitting pull requests.
 
 ## License
 

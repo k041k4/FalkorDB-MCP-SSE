@@ -1,0 +1,98 @@
+{
+  "mcpServers": {
+    "FalkorDB-MCP-Server": {
+      "url": "http://localhost:3000/api/mcp",
+      "api_key": "test-api-key",
+      "capabilities": {
+        "context": true,
+        "streaming": true,
+        "metadata": true,
+        "graphs": true,
+        "tools": true,
+        "resources": true,
+        "health": true
+      },
+      "metadata": {
+        "provider": "FalkorDB",
+        "version": "1.0.0",
+        "description": "Model Context Protocol server for FalkorDB graph database",
+        "queryLanguages": ["cypher"],
+        "graphTypes": ["property", "directed"]
+      },
+      "authentication": {
+        "type": "apiKey",
+        "header": "Authorization",
+        "prefix": "Bearer",
+        "value": "test-api-key"
+      },
+      "endpoints": {
+        "health": "/health",
+        "metadata": "/metadata",
+        "context": "/context",
+        "capabilities": "/capabilities",
+        "resources": "/resources",
+        "tools": "/tools",
+        "graphs": "/graphs",
+        "stream": "/stream"
+      },
+      "streaming": {
+        "enabled": true,
+        "type": "sse",
+        "endpoint": "/stream",
+        "method": "GET",
+        "headers": {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "Authorization": "Bearer test-api-key"
+        }
+      }
+    }
+  },
+  "defaultServer": "falkordb",
+  "servers": {
+    "falkordb": {
+      "url": "http://localhost:3000/api/mcp",
+      "capabilities": {
+        "context": true,
+        "streaming": true,
+        "metadata": true,
+        "graphs": true,
+        "tools": true,
+        "resources": true,
+        "health": true
+      },
+      "metadata": {
+        "provider": "FalkorDB",
+        "version": "1.0.0",
+        "description": "Model Context Protocol server for FalkorDB graph database",
+        "queryLanguages": ["cypher"],
+        "graphTypes": ["property", "directed"]
+      },
+      "authentication": {
+        "type": "apiKey",
+        "header": "Authorization",
+        "prefix": "Bearer",
+        "value": "${env:MCP_API_KEY}"
+      },
+      "endpoints": {
+        "health": "/health",
+        "metadata": "/metadata",
+        "context": "/context",
+        "capabilities": "/capabilities",
+        "resources": "/resources",
+        "tools": "/tools",
+        "graphs": "/graphs"
+      },
+      "streaming": {
+        "enabled": true,
+        "type": "sse",
+        "headers": {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive"
+        }
+      }
+    }
+  }
+} 

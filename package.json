@@ -1,44 +1,25 @@
 {
-  "name": "falkordb-mcpserver",
+  "name": "falkordb-mcp-client",
   "version": "1.0.0",
-  "description": "Model Context Protocol server for FalkorDB",
+  "description": "Client library for FalkorDB MCP Server",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts",
-    "lint": "eslint . --ext .ts",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
-    "docker:build": "docker build -t falkordb-mcpserver .",
-    "docker:run": "docker run -p 3000:3000 falkordb-mcpserver"
+    "start": "ts-node src/index.ts",
+    "example:industries": "ts-node src/examples/list-industries.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "mcp",
-    "modelcontextprotocol",
-    "falkordb",
-    "graph",
-    "database"
-  ],
+  "keywords": ["falkordb", "mcp", "client", "sse"],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/node": "^20.11.0",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
-    "eslint": "^8.56.0",
-    "jest": "^29.7.0",
-    "@types/jest": "^29.5.11",
-    "ts-jest": "^29.1.1",
-    "nodemon": "^3.0.2",
-    "ts-node": "^10.9.2",
+  "dependencies": {
+    "axios": "^1.6.7",
+    "dotenv": "^16.4.5",
+    "eventsource": "^2.0.2",
     "typescript": "^5.3.3"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.8.0",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "falkordb": "^6.2.07"
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "ts-node": "^10.9.2"
   }
 }

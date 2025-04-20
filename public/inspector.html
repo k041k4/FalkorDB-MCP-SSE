@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FalkorDB MCP Inspector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>FalkorDB MCP Inspector</h1>
+    <div class="container">
+        <div class="panel">
+            <h2>Metadata</h2>
+            <button onclick="fetchMetadata()">Fetch Metadata</button>
+            <pre id="metadata">Click button to fetch metadata</pre>
+        </div>
+        <div class="panel">
+            <h2>Graphs</h2>
+            <button onclick="fetchGraphs()">Fetch Graphs</button>
+            <pre id="graphs">Click button to fetch graphs</pre>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'falkordb_mcp_server_key_2024';
+        const BASE_URL = 'http://localhost:3001/api/mcp';
+
+        const headers = {
+            'Authorization': `Bearer ${API_KEY}`,
+            'X-API-Key': API_KEY
+        };
+
+        async function fetchMetadata() {
+            try {
+                const response = await fetch(`${BASE_URL}/metadata`, { headers });
+                const data = await response.json();
+                document.getElementById('metadata').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('metadata').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function fetchGraphs() {
+            try {
+                const response = await fetch(`${BASE_URL}/graphs`, { headers });
+                const data = await response.json();
+                document.getElementById('graphs').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('graphs').textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html> 

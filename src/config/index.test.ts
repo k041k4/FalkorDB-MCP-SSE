@@ -1,22 +1,30 @@
-import { config } from '../config';
+import { config } from './index';
+import { ConfigType } from '../types/config';
 
 describe('Config', () => {
-  test('should have server configuration', () => {
-    expect(config).toHaveProperty('server');
-    expect(config.server).toHaveProperty('port');
-    expect(config.server).toHaveProperty('nodeEnv');
-  });
-
-  test('should have FalkorDB configuration', () => {
+  it('should have the correct structure', () => {
+    expect(config).toBeDefined();
+    expect(config).toHaveProperty('port');
     expect(config).toHaveProperty('falkorDB');
-    expect(config.falkorDB).toHaveProperty('host');
-    expect(config.falkorDB).toHaveProperty('port');
-    expect(config.falkorDB).toHaveProperty('username');
-    expect(config.falkorDB).toHaveProperty('password');
+    expect(config).toHaveProperty('apiKey');
+    expect(config).toHaveProperty('cors');
   });
 
-  test('should have MCP configuration', () => {
-    expect(config).toHaveProperty('mcp');
-    expect(config.mcp).toHaveProperty('apiKey');
+  it('should have the correct types', () => {
+    const typedConfig: ConfigType = config;
+    expect(typedConfig.port).toBeDefined();
+    expect(typedConfig.falkorDB.host).toBeDefined();
+    expect(typedConfig.falkorDB.port).toBeDefined();
+    expect(typedConfig.falkorDB.username).toBeDefined();
+    expect(typedConfig.falkorDB.password).toBeDefined();
+    expect(typedConfig.falkorDB.retryStrategy).toBeDefined();
+    expect(typedConfig.falkorDB.maxRetriesPerRequest).toBeDefined();
+    expect(typedConfig.falkorDB.enableReadyCheck).toBeDefined();
+    expect(typedConfig.falkorDB.enableOfflineQueue).toBeDefined();
+    expect(typedConfig.falkorDB.defaultGraph).toBeDefined();
+    expect(typedConfig.apiKey).toBeDefined();
+    expect(typedConfig.cors.origin).toBeDefined();
+    expect(typedConfig.cors.methods).toBeDefined();
+    expect(typedConfig.cors.allowedHeaders).toBeDefined();
   });
 });

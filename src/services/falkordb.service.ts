@@ -1,76 +1,153 @@
-import { FalkorDB } from 'falkordb';
+import { createClient } from 'redis';
 import { config } from '../config';
 
-class FalkorDBService {
-  private client: FalkorDB | null = null;
+export interface GraphQueryResult {
+  headers: string[];
+  data: any[][];
+  metadata: string[];
+}
+
+export class FalkorDBService {
+  private client: any;
+  private isConnected: boolean = false;
 
   constructor() {
-    this.init();
+    this.client = createClient({
+      url: `redis://${config.falkorDB.host}:${config.falkorDB.port}`,
+      username: config.falkorDB.username,
+      password: config.falkorDB.password
+    });
+
+    this.client.on('error', (err: Error) => {
+      console.error('FalkorDB connection error:', err);
+      this.isConnected = false;
+    });
+
+    this.client.on('connect', () => {
+      console.log('Connected to FalkorDB');
+      this.isConnected = true;
+    });
   }
 
-  private async init() {
-    try {
-      this.client = await FalkorDB.connect({
-        socket: {
-          host: config.falkorDB.host,
-          port: config.falkorDB.port,
-        },
-        password: config.falkorDB.password,
-        username: config.falkorDB.username,
-      });
-      
-      // Test connection
-      const connection = await this.client.connection;
-      await connection.ping();
-      console.log('Successfully connected to FalkorDB');
-    } catch (error) {
-      console.error('Failed to connect to FalkorDB:', error);
-      // Retry connection after a delay
-      setTimeout(() => this.init(), 5000);
-    }
-  }
-
-  async executeQuery(graphName: string, query: string, params?: Record<string, any>): Promise<any> {
-    if (!this.client) {
-      throw new Error('FalkorDB client not initialized');
-    }
-    
-    try {
-      const graph = this.client.selectGraph(graphName);
-      const result = await graph.query(query, params);
-      return result;
-    } catch (error) {
-      const sanitizedGraphName = graphName.replace(/\n|\r/g, "");
-      console.error('Error executing FalkorDB query on graph %s:', sanitizedGraphName, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Lists all available graphs in FalkorDB
-   * @returns Array of graph names
-   */
-  async listGraphs(): Promise<string[]> {
-    if (!this.client) {
-      throw new Error('FalkorDB client not initialized');
-    }
-
-    try {
-      // Using the simplified list method which always returns an array
-      return await this.client.list();
-    } catch (error) {
-      console.error('Error listing FalkorDB graphs:', error);
-      throw error;
+  async connect() {
+    if (!this.isConnected) {
+      await this.client.connect();
     }
   }
 
   async close() {
-    if (this.client) {
-      await this.client.close();
-      this.client = null;
+    if (this.isConnected) {
+      await this.client.quit();
+      this.isConnected = false;
+    }
+  }
+
+  async executeRawCommand(command: string[]): Promise<any> {
+    await this.connect();
+    try {
+      return await this.client.sendCommand(command);
+    } catch (error) {
+      console.error('Error executing raw command:', error);
+      throw error;
+    }
+  }
+
+  async executeQuery(query: string, parameters: any = {}, graphName: string = 'default'): Promise<GraphQueryResult> {
+    await this.connect();
+    try {
+      // Use Redis Graph's query method
+      const result = await this.client.graph.query(graphName, query, parameters);
+      return {
+        headers: result.headers || [],
+        data: result.data || [],
+        metadata: result.metadata || []
+      };
+    } catch (error) {
+      console.error(`Error executing query on graph ${graphName}:`, error);
+      throw error;
+    }
+  }
+
+  async listGraphs() {
+    await this.connect();
+    try {
+      // Use Redis Graph's list method to get all graphs
+      const graphs = await this.client.graph.list();
+      return graphs.map((name: string) => ({
+        name,
+        type: 'property',
+        directed: true
+      }));
+    } catch (error) {
+      console.error('Error listing graphs:', error);
+      throw error;
+    }
+  }
+
+  async getResources(graphName: string = 'default') {
+    await this.connect();
+    try {
+      const graphs = await this.listGraphs();
+      const [nodeCount, relationshipCount] = await Promise.all([
+        this.getNodeCount(graphName),
+        this.getRelationshipCount(graphName)
+      ]);
+
+      return {
+        graphs,
+        nodes: nodeCount,
+        relationships: relationshipCount
+      };
+    } catch (error) {
+      console.error(`Error getting resources for graph ${graphName}:`, error);
+      throw error;
+    }
+  }
+
+  private async getNodeCount(graphName: string = 'default'): Promise<number> {
+    const result = await this.executeQuery('MATCH (n) RETURN count(n) as count', {}, graphName);
+    return result.data[0]?.[0] || 0;
+  }
+
+  private async getRelationshipCount(graphName: string = 'default'): Promise<number> {
+    const result = await this.executeQuery('MATCH ()-[r]->() RETURN count(r) as count', {}, graphName);
+    return result.data[0]?.[0] || 0;
+  }
+
+  async getMetadata() {
+    await this.connect();
+    try {
+      const info = await this.client.info();
+      return {
+        provider: 'FalkorDB',
+        version: info?.server?.redis_version || 'unknown',
+        capabilities: [
+          'graph.query',
+          'graph.list',
+          'node.properties',
+          'relationship.properties'
+        ],
+        graphTypes: ['property', 'directed'],
+        queryLanguages: ['cypher'],
+        redisMode: info?.server?.redis_mode || 'standalone'
+      };
+    } catch (error) {
+      console.error('Error getting metadata:', error);
+      return {
+        provider: 'FalkorDB',
+        version: 'unknown',
+        capabilities: [
+          'graph.query',
+          'graph.list',
+          'node.properties',
+          'relationship.properties'
+        ],
+        graphTypes: ['property', 'directed'],
+        queryLanguages: ['cypher'],
+        redisMode: 'unknown'
+      };
     }
   }
 }
 
-// Export a singleton instance
 export const falkorDBService = new FalkorDBService();

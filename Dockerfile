@@ -12,9 +12,6 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Remove development dependencies
-RUN npm prune --production
-
 # Production image
 FROM node:18-alpine
 
@@ -27,6 +24,12 @@ ENV NODE_ENV=production
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
+
+# Copy necessary configuration files
+COPY --from=builder /app/.env.example ./.env
+
+# Install production dependencies only
+RUN npm ci --only=production
 
 # Expose the port the app runs on
 EXPOSE 3000
