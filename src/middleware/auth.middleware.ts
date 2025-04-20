@@ -1,38 +1,31 @@
 import { Request, Response, NextFunction } from 'express';
 import { config } from '../config';
-import { ConfigType } from '../types/config';
 
 /**
  * Middleware to authenticate MCP API requests
  */
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers.authorization;
-    const typedConfig: ConfigType = config;
-    
+export function authenticate(req: Request, res: Response, next: NextFunction) {
     // Skip authentication in development mode if no API key is set
-    if (process.env.NODE_ENV === 'development' && !typedConfig.apiKey) {
+    if (process.env.NODE_ENV === 'development' && !config.apiKey) {
         return next();
     }
+    
+    const authHeader = req.headers.authorization;
     
     if (!authHeader) {
         return res.status(401).json({ error: 'No authorization header provided' });
     }
     
-    const [type, token] = authHeader.split(' ');
+    const apiKey = authHeader.split(' ')[1];
     
-    if (type !== 'Bearer' || !token) {
-        return res.status(401).json({ error: 'Invalid authorization header format' });
-    }
-    
-    // In development, allow either the configured API key or the default development key
-    if (process.env.NODE_ENV === 'development' && 
-        (token === typedConfig.apiKey || token === 'falkordb_mcp_server_key_2024')) {
+    if (apiKey && 
+        (apiKey === config.apiKey || apiKey === 'falkordb_mcp_server_key_2024')) {
         return next();
     }
     
-    if (token !== typedConfig.apiKey) {
+    if (apiKey !== config.apiKey) {
         return res.status(401).json({ error: 'Invalid API key' });
     }
     
     next();
-};
+}

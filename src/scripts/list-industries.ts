@@ -1,30 +1,49 @@
-import { falkorDBService } from '../services/falkordb.service';
+import fetch from 'node-fetch';
+
+interface QueryResponse {
+    type: string;
+    status: string;
+    data: {
+        headers: string[];
+        data: string[][];
+        metadata: string[];
+    };
+}
 
 async function listIndustries() {
-    try {
-        // Connect to FalkorDB
-        await falkorDBService.connect();
-        console.log('Connected to FalkorDB');
+    const baseUrl = 'http://localhost:3001/api/mcp';
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer falkordb_mcp_server_key_2024'
+    };
 
-        // Get all industries ordered by name
-        const query = 'MATCH (n:Industry) RETURN n.Name as industry ORDER BY industry';
-        const result = await falkorDBService.executeRawCommand(['GRAPH.QUERY', 'Ecosided_Graph', query]);
+    try {
+        console.log('Sending query to MCP server...');
+        const response = await fetch(`${baseUrl}/context`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                query: 'MATCH (n:Industry) RETURN n.Name as industry ORDER BY industry',
+                graphName: 'Ecosided_Graph'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Query failed: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json() as QueryResponse;
         
         console.log('\nIndustries in Ecosided_Graph:');
-        if (result[1] && Array.isArray(result[1])) {
-            result[1].forEach((row: any[]) => {
+        if (result.data?.data) {
+            result.data.data.forEach((row) => {
                 if (row[0]) console.log(`- ${row[0]}`);
             });
+            console.log(`\nTotal number of industries: ${result.data.data.length}`);
         }
-        
-        console.log(`\nTotal number of industries: ${result[1]?.length || 0}`);
 
     } catch (error) {
         console.error('Error:', error);
-    } finally {
-        // Close the connection
-        await falkorDBService.close();
-        console.log('Disconnected from FalkorDB');
     }
 }
 

@@ -1,6 +1,7 @@
+import 'dotenv/config';
 import express from 'express';
 import { config } from './config';
-import { mcpRoutes } from './routes/mcp.routes';
+import { mcpRouter } from './routes/mcp.routes';
 import { authenticate } from './middleware/auth.middleware';
 import { falkorDBService } from './services/falkordb.service';
 import path from 'path';
@@ -11,6 +12,9 @@ import { EventEmitter } from 'events';
 // Initialize Express app
 const app = express();
 const eventEmitter = new EventEmitter();
+
+// Increase max listeners to handle multiple SSE connections
+eventEmitter.setMaxListeners(100);
 
 // Middleware
 app.use(cors({
@@ -25,7 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Apply authentication to MCP routes
-app.use('/api/mcp', authenticate, mcpRoutes);
+app.use('/api/mcp', authenticate, mcpRouter);
 
 // Basic routes
 app.get('/', (req, res) => {
@@ -33,7 +37,29 @@ app.get('/', (req, res) => {
         name: 'FalkorDB MCP Server',
         version: '1.0.0',
         status: 'running',
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        environment: process.env.NODE_ENV || 'development'
     });
+});
+
+// Health check endpoint
+app.get('/health', async (req, res) => {
+    try {
+        // Check FalkorDB connection
+        await falkorDBService.executeQuery('RETURN 1', {}, 'default');
+        res.json({
+            status: 'healthy',
+            database: 'connected',
+            uptime: process.uptime()
+        });
+    } catch (error) {
+        res.status(503).json({
+            status: 'unhealthy',
+            database: 'disconnected',
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
 });
 
 // SSE endpoint for MCP streaming
@@ -58,7 +84,14 @@ app.get('/api/mcp/stream', (req, res) => {
             if (error?.code !== 'ECONNRESET') {
                 console.error('Error sending SSE event:', error);
             }
-            eventEmitter.removeListener('mcpEvent', sendEvent);
+            cleanup();
+        }
+    };
+
+    const cleanup = () => {
+        eventEmitter.removeListener('mcpEvent', sendEvent);
+        if (!res.writableEnded) {
+            res.end();
         }
     };
 
@@ -67,18 +100,33 @@ app.get('/api/mcp/stream', (req, res) => {
 
     // Handle client disconnect
     req.on('close', () => {
-        eventEmitter.removeListener('mcpEvent', sendEvent);
-        res.end();
+        cleanup();
     });
 
     // Handle errors
     req.on('error', (error: any) => {
-        // Ignore connection reset errors during testing
-        if (error?.code !== 'ECONNRESET' || process.env.NODE_ENV !== 'test') {
+        // Only log non-ECONNRESET errors in production
+        if (error?.code !== 'ECONNRESET' || process.env.NODE_ENV === 'development') {
             console.error('SSE connection error:', error);
         }
-        eventEmitter.removeListener('mcpEvent', sendEvent);
-        res.end();
+        cleanup();
+    });
+
+    // Send periodic heartbeat to keep connection alive
+    const heartbeat = setInterval(() => {
+        try {
+            if (!res.writableEnded) {
+                res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+            }
+        } catch (error) {
+            clearInterval(heartbeat);
+            cleanup();
+        }
+    }, 30000); // Send heartbeat every 30 seconds
+
+    // Clean up heartbeat interval on connection close
+    req.on('close', () => {
+        clearInterval(heartbeat);
     });
 });
 
@@ -92,19 +140,46 @@ if (process.env.NODE_ENV !== 'test' && !process.env.SKIP_MAIN_SERVER) {
         console.log(`FalkorDB MCP Server listening on port ${PORT}`);
         console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
+
+    // Handle server errors
+    server.on('error', (error: NodeJS.ErrnoException) => {
+        if (error.code === 'EADDRINUSE') {
+            console.error(`Port ${PORT} is already in use`);
+        } else {
+            console.error('Server error:', error);
+        }
+        process.exit(1);
+    });
 }
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    gracefulShutdown();
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // Handle graceful shutdown
 const gracefulShutdown = async () => {
     console.log('Shutting down gracefully...');
-    // Close database connections
-    await falkorDBService.close();
-    if (server) {
-        server.close(() => {
-            console.log('Server closed');
-            process.exit(0);
-        });
-    } else {
+    try {
+        // Close database connections
+        await falkorDBService.close();
+        if (server) {
+            await new Promise<void>((resolve) => {
+                server?.close(() => {
+                    console.log('Server closed');
+                    resolve();
+                });
+            });
+        }
+    } catch (error) {
+        console.error('Error during shutdown:', error);
+    } finally {
         process.exit(0);
     }
 };

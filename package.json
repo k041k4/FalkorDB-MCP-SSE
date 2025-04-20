@@ -3,23 +3,57 @@
   "version": "1.0.0",
   "description": "Client library for FalkorDB MCP Server",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.4",
   "scripts": {
     "build": "tsc",
-    "start": "ts-node src/index.ts",
-    "example:industries": "ts-node src/examples/list-industries.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "pnpm ts-node src/index.ts",
+    "dev": "pnpm ts-node-dev --respawn --transpile-only src/index.ts",
+    "example:industries": "pnpm ts-node src/examples/list-industries.ts",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
-  "keywords": ["falkordb", "mcp", "client", "sse"],
+  "keywords": [
+    "falkordb",
+    "mcp",
+    "client",
+    "sse"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.6.7",
+    "body-parser": "^1.20.2",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "eventsource": "^2.0.2",
+    "express": "^4.18.3",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "node-fetch": "^2.7.0",
+    "redis": "^4.6.13",
     "typescript": "^5.3.3"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/compression": "^1.7.5",
+    "@types/cors": "^2.8.17",
+    "@types/eventsource": "^1.1.12",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.12",
+    "@types/morgan": "^1.9.9",
     "@types/node": "^20.11.24",
-    "ts-node": "^10.9.2"
+    "@types/node-fetch": "^2.6.11",
+    "@types/redis": "^4.0.11",
+    "@types/supertest": "^6.0.3",
+    "jest": "^29.7.0",
+    "supertest": "^7.1.0",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0"
   }
 }

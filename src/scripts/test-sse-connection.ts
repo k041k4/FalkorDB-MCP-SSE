@@ -2,7 +2,7 @@ import EventSource = require('eventsource');
 import fetch from 'node-fetch';
 
 async function testSSEConnection() {
-    const baseUrl = 'http://localhost:3000/api/mcp';
+    const baseUrl = 'http://localhost:3001/api/mcp';
     const headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer falkordb_mcp_server_key_2024'

@@ -1,16 +1,13 @@
 {
   "mcpServers": {
     "FalkorDB-MCP-Server": {
-      "url": "http://localhost:3000/api/mcp",
-      "api_key": "test-api-key",
+      "url": "http://localhost:3001/api/mcp",
+      "api_key": "falkordb_mcp_server_key_2024",
       "capabilities": {
         "context": true,
-        "streaming": true,
         "metadata": true,
-        "graphs": true,
         "tools": true,
-        "resources": true,
-        "health": true
+        "resources": true
       },
       "metadata": {
         "provider": "FalkorDB",
@@ -23,7 +20,7 @@
         "type": "apiKey",
         "header": "Authorization",
         "prefix": "Bearer",
-        "value": "test-api-key"
+        "value": "falkordb_mcp_server_key_2024"
       },
       "endpoints": {
         "health": "/health",
@@ -31,20 +28,15 @@
         "context": "/context",
         "capabilities": "/capabilities",
         "resources": "/resources",
-        "tools": "/tools",
-        "graphs": "/graphs",
-        "stream": "/stream"
+        "tools": "/tools"
       },
       "streaming": {
         "enabled": true,
         "type": "sse",
-        "endpoint": "/stream",
-        "method": "GET",
         "headers": {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
-          "Authorization": "Bearer test-api-key"
+          "Connection": "keep-alive"
         }
       }
     }
@@ -52,15 +44,12 @@
   "defaultServer": "falkordb",
   "servers": {
     "falkordb": {
-      "url": "http://localhost:3000/api/mcp",
+      "url": "http://localhost:3001/api/mcp",
       "capabilities": {
         "context": true,
-        "streaming": true,
         "metadata": true,
-        "graphs": true,
         "tools": true,
-        "resources": true,
-        "health": true
+        "resources": true
       },
       "metadata": {
         "provider": "FalkorDB",
@@ -73,7 +62,7 @@
         "type": "apiKey",
         "header": "Authorization",
         "prefix": "Bearer",
-        "value": "${env:MCP_API_KEY}"
+        "value": "falkordb_mcp_server_key_2024"
       },
       "endpoints": {
         "health": "/health",
@@ -81,8 +70,7 @@
         "context": "/context",
         "capabilities": "/capabilities",
         "resources": "/resources",
-        "tools": "/tools",
-        "graphs": "/graphs"
+        "tools": "/tools"
       },
       "streaming": {
         "enabled": true,

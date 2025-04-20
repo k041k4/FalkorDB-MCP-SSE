@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { falkorDBService } from '../services/falkordb.service';
 import { eventEmitter } from '../index';
 import { EventEmitter } from 'events';
+import { config } from '../config';
 
 import { 
   MCPContextRequest, 
@@ -13,12 +14,20 @@ export class MCPController {
   constructor() {}
 
   /**
+   * Health check endpoint
+   */
+  healthCheck(req: Request, res: Response) {
+    res.json({ status: 'ok' });
+  }
+
+  /**
    * Process MCP context requests
    */
   async processContextRequest(req: Request, res: Response): Promise<Response<any, Record<string, any>>> {
     try {
       const { query, params } = req.body;
-      const result = await falkorDBService.executeQuery(query, params);
+      const graphName = process.env.MCP_DEFAULT_GRAPH || config.falkorDB.defaultGraph;
+      const result = await falkorDBService.executeQuery(query, params, graphName);
       return res.json(result);
     } catch (error) {
       if (error instanceof Error) {
@@ -34,7 +43,8 @@ export class MCPController {
   async processMetadataRequest(req: Request, res: Response): Promise<Response<any, Record<string, any>>> {
     try {
       const { query, params } = req.body;
-      const result = await falkorDBService.executeQuery(query, params);
+      const graphName = process.env.MCP_DEFAULT_GRAPH || config.falkorDB.defaultGraph;
+      const result = await falkorDBService.executeQuery(query, params, graphName);
       return res.json(result);
     } catch (error) {
       if (error instanceof Error) {
@@ -92,17 +102,15 @@ export class MCPController {
     }
   }
 
-  async getResources(req: Request, res: Response) {
+  async getResources(req: Request, res: Response): Promise<void> {
     try {
-      const { graphName = 'default' } = req.query;
-      const resources = await falkorDBService.getResources(graphName as string);
-      res.json({
-        type: 'resources',
-        status: 'success',
-        data: resources
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: error?.message || 'Failed to get resources' });
+      const graphName = process.env.MCP_DEFAULT_GRAPH || config.falkorDB.defaultGraph;
+      const query = 'MATCH (n) RETURN DISTINCT labels(n) as labels';
+      const result = await falkorDBService.executeQuery(query, {}, graphName);
+      res.json(result);
+    } catch (error) {
+      console.error('Error getting resources:', error);
+      res.status(500).json({ error: 'Failed to get resources' });
     }
   }
 
@@ -126,7 +134,7 @@ export class MCPController {
               },
               graphName: {
                 type: 'string',
-                description: 'Name of the graph to query (default: "default")'
+                description: `Name of the graph to query (default: "${process.env.MCP_DEFAULT_GRAPH || config.falkorDB.defaultGraph}")`
               }
             },
             required: ['query']
@@ -156,7 +164,7 @@ export class MCPController {
             properties: {
               graphName: {
                 type: 'string',
-                description: 'Name of the graph to get resources for (default: "default")'
+                description: `Name of the graph to get resources for (default: "${process.env.MCP_DEFAULT_GRAPH || config.falkorDB.defaultGraph}")`
               }
             }
           }
@@ -165,23 +173,24 @@ export class MCPController {
     });
   }
 
-  async handleContextRequest(req: Request, res: Response) {
+  async getContext(req: Request, res: Response) {
     try {
-      const { query, context, graphName = 'default' } = req.body;
+      const { query, parameters = {} } = req.body;
+      const graphName = process.env.MCP_DEFAULT_GRAPH || config.falkorDB.defaultGraph;
       
-      // Emit initial processing event
-      eventEmitter.emit('mcpEvent', {
-        type: 'context',
-        status: 'processing',
-        data: { query, graphName }
-      });
+      if (!query) {
+        return res.status(400).json({
+          type: 'context',
+          status: 'error',
+          error: 'Query is required'
+        });
+      }
 
-      // Process the query and context
-      const result = await this.processQuery(query, context, graphName);
-
-      // Emit completion event
+      const result = await falkorDBService.executeQuery(query, parameters, graphName);
+      
+      // Emit the result as an SSE event
       eventEmitter.emit('mcpEvent', {
-        type: 'context',
+        type: 'query_result',
         status: 'success',
         data: result
       });
@@ -191,19 +200,53 @@ export class MCPController {
         status: 'success',
         data: result
       });
-    } catch (error: any) {
-      // Emit error event
-      eventEmitter.emit('mcpEvent', {
-        type: 'error',
+    } catch (error) {
+      const errorResponse = {
+        type: 'context',
         status: 'error',
-        error: error?.message || 'An unknown error occurred'
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+
+      // Emit the error as an SSE event
+      eventEmitter.emit('mcpEvent', {
+        type: 'query_error',
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
 
-      res.status(500).json({ error: error?.message || 'An unknown error occurred' });
+      res.status(500).json(errorResponse);
     }
   }
 
-  private async processQuery(query: string, context: any = {}, graphName: string = 'default') {
+  async executeQuery(req: Request, res: Response) {
+    try {
+      const { query, parameters = {} } = req.body;
+      const graphName = process.env.MCP_DEFAULT_GRAPH || config.falkorDB.defaultGraph;
+      
+      if (!query) {
+        return res.status(400).json({
+          type: 'query',
+          status: 'error',
+          error: 'Query is required'
+        });
+      }
+
+      const result = await falkorDBService.executeQuery(query, parameters, graphName);
+      res.json({
+        type: 'query',
+        status: 'success',
+        data: result
+      });
+    } catch (error) {
+      res.status(500).json({
+        type: 'query',
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  private async processQuery(query: string, context: any = {}, graphName: string = process.env.MCP_DEFAULT_GRAPH || config.falkorDB.defaultGraph) {
     const result = await falkorDBService.executeQuery(query, context, graphName);
     return {
       headers: result.headers,

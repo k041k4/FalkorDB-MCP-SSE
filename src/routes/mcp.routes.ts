@@ -1,42 +1,25 @@
 import { Router } from 'express';
+import { authenticate } from '../middleware/auth.middleware';
+import { config } from '../config';
 import { mcpController } from '../controllers/mcp.controller';
 
-const router = Router();
-
-// MCP API routes
-router.post('/context', mcpController.handleContextRequest.bind(mcpController));
-router.get('/metadata', (req, res) => {
-  res.json({
-    type: 'metadata',
-    status: 'success',
-    data: {
-      provider: 'FalkorDB',
-      version: '1.0.0',
-      capabilities: ['context', 'metadata', 'tools', 'resources']
-    }
-  });
-});
-router.get('/graphs', mcpController.listGraphs.bind(mcpController));
-
-// MCP Protocol endpoints
-router.get('/capabilities', mcpController.getCapabilities.bind(mcpController));
-router.get('/resources', mcpController.getResources.bind(mcpController));
-router.get('/tools', mcpController.getTools.bind(mcpController));
+const mcpRouter = Router();
 
 // Health check endpoint
-router.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok',
-    version: '1.0.0',
-    protocol: 'StreamableHTTP',
-    capabilities: {
-      context: true,
-      metadata: true,
-      streaming: true,
-      tools: true,
-      resources: true
-    }
-  });
-});
+mcpRouter.get('/health', mcpController.healthCheck);
 
-export const mcpRoutes = router;
+// Authentication middleware for all routes below
+mcpRouter.use(authenticate);
+
+// MCP endpoints
+mcpRouter.get('/capabilities', mcpController.getCapabilities);
+mcpRouter.get('/tools', mcpController.getTools);
+mcpRouter.get('/metadata', mcpController.getMetadata);
+mcpRouter.get('/resources', (req, res) => {
+  req.query.graphName = req.query.graphName || config.falkorDB.defaultGraph;
+  mcpController.getResources(req, res);
+});
+mcpRouter.post('/context', mcpController.getContext);
+mcpRouter.post('/query', mcpController.executeQuery);
+
+export { mcpRouter };

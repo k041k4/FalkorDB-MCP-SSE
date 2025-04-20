@@ -31,7 +31,7 @@ export class FalkorDBMCPClient extends EventEmitter {
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.eventSource = new EventSource(`${this.baseUrl}/api/mcp/stream`, {
+        this.eventSource = new EventSource(`${this.baseUrl}/context/stream`, {
           headers: {
             'Authorization': `Bearer ${this.apiKey}`
           }
@@ -68,7 +68,7 @@ export class FalkorDBMCPClient extends EventEmitter {
   async sendQuery(query: MCPQuery): Promise<MCPResponse> {
     try {
       const response = await axios.post(
-        `${this.baseUrl}/api/mcp/context`,
+        `${this.baseUrl}/context`,
         query,
         {
           headers: {
@@ -92,4 +92,4 @@ export class FalkorDBMCPClient extends EventEmitter {
       this.emit('disconnected');
     }
   }
-} 
+}

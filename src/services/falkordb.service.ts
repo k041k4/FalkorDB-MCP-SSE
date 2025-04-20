@@ -52,7 +52,7 @@ export class FalkorDBService {
     }
   }
 
-  async executeQuery(query: string, parameters: any = {}, graphName: string = 'default'): Promise<GraphQueryResult> {
+  async executeQuery(query: string, parameters: any = {}, graphName: string = config.falkorDB.defaultGraph): Promise<GraphQueryResult> {
     await this.connect();
     try {
       // Use Redis Graph's query method
